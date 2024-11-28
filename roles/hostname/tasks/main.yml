@@ -1,0 +1,8 @@
+- name: Set hostname
+  command: hostnamectl set-hostname nodo1
+
+- name: Restart hostname service
+  command: systemctl restart systemd-hostnamed
+
+- name: Show hostname
+  command: hostname

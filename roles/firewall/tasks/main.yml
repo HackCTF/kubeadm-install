@@ -1,0 +1,20 @@
+- name: Open Kubernetes ports in the firewall
+  firewalld:
+    port: "{{ item }}"
+    permanent: true
+    state: enabled
+  loop:
+    - 2379/tcp
+    - 2380/tcp
+    - 10251/tcp
+    - 10252/tcp
+    - 10257/tcp
+    - 10259/tcp
+    - 179/tcp
+    - 4789/udp
+    - 6443/tcp
+    - 10250/tcp
+    - 30000-32767/tcp
+
+- name: Reload firewall
+  command: firewall-cmd --reload

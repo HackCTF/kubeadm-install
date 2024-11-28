@@ -1,0 +1,16 @@
+- name: Add CRI-O repository
+  shell: |
+    export VERSION=1.31.2
+    curl -L -o /etc/yum.repos.d/crio.repo \
+      https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/${VERSION}/CentOS_8_Stream/devel:kubic:libcontainers:stable:cri-o:${VERSION}.repo
+
+- name: Add Kubernetes repository
+  copy:
+    dest: /etc/yum.repos.d/kubernetes.repo
+    content: |
+      [kubernetes]
+      name=Kubernetes
+      baseurl=https://pkgs.k8s.io/core:/stable:/v1.31/rpm/
+      enabled=1
+      gpgcheck=1
+      gpgkey=https://pkgs.k8s.io/core:/stable:/v1.31/rpm/repodata/repomd.xml.key

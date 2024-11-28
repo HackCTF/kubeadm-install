@@ -1,0 +1,9 @@
+- name: Install required packages
+  dnf:
+    name:
+      - container-selinux
+      - cri-o
+      - kubelet
+      - kubeadm
+      - kubectl
+    state: present

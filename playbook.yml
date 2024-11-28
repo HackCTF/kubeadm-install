@@ -1,0 +1,22 @@
+- name: Kubernetes Setup
+  hosts: all
+  become: true
+  vars:
+    pod_network_cidr: "{{ ansible_default_ipv4.address }}/16"  # Predeterminado: Subred basada en la IP de la máquina
+  tasks:
+    - name: Set pod network CIDR from inventory or default
+      set_fact:
+        pod_network_cidr: "{{ pod_network_cidr if pod_network_cidr is defined else ansible_default_ipv4.address }}/16"
+
+    - include_role:
+        name: hostname
+    - include_role:
+        name: prerequisites
+    - include_role:
+        name: firewall
+    - include_role:
+        name: repos
+    - include_role:
+        name: install_packages
+    - include_role:
+        name: kubeadm
