@@ -2,11 +2,14 @@
   hosts: all
   become: true
   vars:
-    pod_network_cidr: "{{ ansible_default_ipv4.address }}/16"  # Predeterminado: Subred basada en la IP de la máquina
+    pod_network_cidr: "{{ ansible_host | default(ansible_default_ipv4.address) }}/16"  # Calcula automáticamente la IP
   tasks:
-    - name: Set pod network CIDR from inventory or default
-      set_fact:
-        pod_network_cidr: "{{ pod_network_cidr if pod_network_cidr is defined else ansible_default_ipv4.address }}/16"
+    - name: Debug variables
+      debug:
+        msg:
+          - "Node: {{ inventory_hostname }}"
+          - "IP Address: {{ ansible_host | default(ansible_default_ipv4.address) }}"
+          - "Pod Network CIDR: {{ pod_network_cidr }}"
 
     - include_role:
         name: hostname
