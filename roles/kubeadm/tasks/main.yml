@@ -21,4 +21,5 @@
   command: sysctl --system
 
 - name: Initialize Kubernetes cluster
-  command: kubeadm init --pod-network-cidr={{ pod_network_cidr }} --control-plane-endpoint {{ ansible_host }}:6443 --cri-socket=unix:///var/run/crio/crio.sock
+  command: kubeadm init --pod-network-cidr={{ pod_network_cidr }} --control-plane-endpoint {{ ansible_host | default(ansible_default_ipv4.address) }}:6443 --cri-socket=unix:///var/run/crio/crio.sock
+
