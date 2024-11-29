@@ -1,2 +1,17 @@
 [all]
-192.168.198.133 ansible_user=your_user ansible_ssh_private_key_file=path_to_private_key pod_network_cidr=192.168.0.0/16
+node1 ansible_connection=local pod_network_cidr=192.168.0.0/16
+#node2 ansible_host=95.54.0.12 pod_network_cidr=192.168.0.0/16
+
+
+#[kube_control_plane]
+#node1
+# node2
+# node3
+
+#[etcd]
+#node1
+# node2
+# node3
+
+#[kube_node]
+#node1
