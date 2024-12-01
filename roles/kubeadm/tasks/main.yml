@@ -36,30 +36,19 @@
   command: kubeadm init --pod-network-cidr={{ pod_network_cidr }} --control-plane-endpoint {{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}:6443 --cri-socket=unix:///var/run/crio/crio.sock
 
 
-# Copy kubeconfig to user home directory
-- name: Create .kube directory
-  file:
-    path: "/home/{{ ansible_env.USER }}/.kube"
-    state: directory
-    mode: '0755'
+- name: Configure kubectl for the root user
+  shell: |
+        mkdir -p $HOME/.kube
+        cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+        chown $(id -u):$(id -g) $HOME/.kube/config
 
-- name: Copy admin kubeconfig
-  copy:
-    src: /etc/kubernetes/admin.conf
-    dest: "/home/{{ ansible_env.USER }}/.kube/config"
-    mode: '0644'
 
-# Cambiar la propiedad del archivo kubeconfig al usuario actual
-- name: Change ownership of kubeconfig
-  file:
-    path: "/home/{{ ansible_env.USER }}/.kube/config"
-    owner: "{{ ansible_env.USER }}"
-    group: "{{ ansible_env.USER }}"
-    mode: '0644'
-
-# Install Calico networking
 - name: Install Calico networking
   command: kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.0/manifests/tigera-operator.yaml
+  register: calico_install_result
+  until: calico_install_result.rc == 0  # Asegúrate de que la instalación haya tenido éxito (código de retorno 0)
+  retries: 5  # Número de intentos
+  delay: 10  # Retraso entre intentos (en segundos)
   ignore_errors: yes
 
 - name: Check Calico pods status
