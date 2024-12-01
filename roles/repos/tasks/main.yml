@@ -1,4 +1,4 @@
-- name: Add CRI-O repository
+- name: Add CRI-O version repository
   shell: |
     export VERSION=1.31.2
     curl -L -o /etc/yum.repos.d/crio.repo \
@@ -14,3 +14,14 @@
       enabled=1
       gpgcheck=1
       gpgkey=https://pkgs.k8s.io/core:/stable:/v1.31/rpm/repodata/repomd.xml.key
+
+- name: Add CRI-O repository
+  copy:
+    dest: /etc/yum.repos.d/cri-o.repo
+    content: |
+      [cri-o]
+      name=CRI-O
+      baseurl=https://pkgs.k8s.io/addons:/cri-o:/stable:/v1.31/rpm/
+      enabled=1
+      gpgcheck=1
+      gpgkey=https://pkgs.k8s.io/addons:/cri-o:/stable:/v1.31/rpm/repodata/repomd.xml.key

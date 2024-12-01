@@ -2,13 +2,13 @@
   hosts: all
   become: true
   vars:
-    pod_network_cidr: "{{ ansible_host | default(ansible_default_ipv4.address) }}/16"  # Calcula automáticamente la IP
+    pod_network_cidr: "{{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) | regex_replace('\\.\\d+\\.\\d+$', '.0.0') }}/16"
   tasks:
     - name: Debug variables
       debug:
         msg:
           - "Node: {{ inventory_hostname }}"
-          - "IP Address: {{ ansible_host | default(ansible_default_ipv4.address) }}"
+          - "IP Address: {{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}"
           - "Pod Network CIDR: {{ pod_network_cidr }}"
 
     - include_role:

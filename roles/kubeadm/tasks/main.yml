@@ -8,6 +8,18 @@
     chmod 666 /dev/kvm
     usermod -aG kvm $USER
     modprobe br_netfilter
+    sysctl -w net.ipv4.ip_forward=1
+
+- name: Configure modules
+  copy:
+    dest: /etc/modules-load.d/kubernetes.conf
+    content: |
+      br_netfilter
+      ip_vs
+      ip_vs_rr
+      ip_vs_wrr
+      ip_vs_sh
+      overlay
 
 - name: Configure sysctl
   copy:
@@ -21,5 +33,4 @@
   command: sysctl --system
 
 - name: Initialize Kubernetes cluster
-  command: kubeadm init --pod-network-cidr={{ pod_network_cidr }} --control-plane-endpoint {{ ansible_host | default(ansible_default_ipv4.address) }}:6443 --cri-socket=unix:///var/run/crio/crio.sock
-
+  command: kubeadm init --pod-network-cidr={{ pod_network_cidr }} --control-plane-endpoint {{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}:6443 --cri-socket=unix:///var/run/crio/crio.sock

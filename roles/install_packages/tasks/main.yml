@@ -6,4 +6,15 @@
       - kubelet
       - kubeadm
       - kubectl
-    state: present
+
+- name: Enable and start CRI-O service
+  systemd:
+    name: crio
+    enabled: true
+    state: started
+
+- name: Enable and start Kubelet service
+  systemd:
+    name: kubelet
+    enabled: true
+    state: started
