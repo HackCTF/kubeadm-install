@@ -34,3 +34,61 @@
 
 - name: Initialize Kubernetes cluster
   command: kubeadm init --pod-network-cidr={{ pod_network_cidr }} --control-plane-endpoint {{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}:6443 --cri-socket=unix:///var/run/crio/crio.sock
+
+
+# Copy kubeconfig to user home directory
+- name: Create .kube directory
+  file:
+    path: "{{ ansible_user_dir }}/.kube"
+    state: directory
+    mode: '0755'
+
+- name: Copy admin kubeconfig
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: "{{ ansible_user_dir }}/.kube/config"
+    mode: '0644'
+
+- name: Change ownership of kubeconfig
+  command: chown $(id -u):$(id -g) {{ ansible_user_dir }}/.kube/config
+
+# Install Calico networking
+- name: Install Calico networking
+  command: kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.0/manifests/tigera-operator.yaml
+  ignore_errors: yes
+
+- name: Check Calico pods status
+  command: kubectl get pods -n kube-system
+  register: calico_pods
+  until: calico_pods.stdout_lines | length > 0
+  retries: 5
+  delay: 10
+
+# Set kubectl completion and alias
+- name: Set kubectl completion in bash
+  shell: echo "source <(kubectl completion bash)" >> ~/.bashrc
+  when: ansible_user != 'root'
+
+- name: Set kubectl alias in bash
+  shell: echo "alias k=kubectl" >> ~/.bashrc
+  when: ansible_user != 'root'
+
+- name: Set kubectl auto-completion
+  shell: echo "complete -o default -F __start_kubectl k" >> ~/.bashrc
+  when: ansible_user != 'root'
+
+- name: Source bashrc for kubectl completion
+  shell: source ~/.bashrc
+  when: ansible_user != 'root'
+
+# Disable swap on Kubelet
+- name: Set failSwapOn to false in kubelet config
+  lineinfile:
+    path: /var/lib/kubelet/config.yaml
+    line: 'failSwapOn: false'
+    create: yes
+    state: present
+
+# Verify nodes in Kubernetes
+- name: Get Kubernetes nodes
+  command: kubectl get nodes
