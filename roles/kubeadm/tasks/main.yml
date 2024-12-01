@@ -39,18 +39,23 @@
 # Copy kubeconfig to user home directory
 - name: Create .kube directory
   file:
-    path: "{{ ansible_user_dir }}/.kube"
+    path: "/home/{{ ansible_env.USER }}/.kube"
     state: directory
     mode: '0755'
 
 - name: Copy admin kubeconfig
   copy:
     src: /etc/kubernetes/admin.conf
-    dest: "{{ ansible_user_dir }}/.kube/config"
+    dest: "/home/{{ ansible_env.USER }}/.kube/config"
     mode: '0644'
 
+# Cambiar la propiedad del archivo kubeconfig al usuario actual
 - name: Change ownership of kubeconfig
-  command: chown $(id -u):$(id -g) {{ ansible_user_dir }}/.kube/config
+  file:
+    path: "/home/{{ ansible_env.USER }}/.kube/config"
+    owner: "{{ ansible_env.USER }}"
+    group: "{{ ansible_env.USER }}"
+    mode: '0644'
 
 # Install Calico networking
 - name: Install Calico networking
@@ -67,19 +72,16 @@
 # Set kubectl completion and alias
 - name: Set kubectl completion in bash
   shell: echo "source <(kubectl completion bash)" >> ~/.bashrc
-  when: ansible_user != 'root'
 
 - name: Set kubectl alias in bash
   shell: echo "alias k=kubectl" >> ~/.bashrc
-  when: ansible_user != 'root'
 
 - name: Set kubectl auto-completion
   shell: echo "complete -o default -F __start_kubectl k" >> ~/.bashrc
-  when: ansible_user != 'root'
+
 
 - name: Source bashrc for kubectl completion
   shell: source ~/.bashrc
-  when: ansible_user != 'root'
 
 # Disable swap on Kubelet
 - name: Set failSwapOn to false in kubelet config
