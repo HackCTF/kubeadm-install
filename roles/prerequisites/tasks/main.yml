@@ -3,5 +3,21 @@
     name: epel-release
     state: present
 
+- name: Disable swap
+  command: swapoff -a
+
+- name: Comment out swap entries in /etc/fstab
+  lineinfile:
+    path: /etc/fstab
+    regexp: '^.*\s+swap\s+.*$'
+    line: '#\1'
+    state: present
+
 - name: Disable SELinux temporarily
   command: setenforce 0
+
+- name: Set SELinux to permissive mode permanently
+  lineinfile:
+    path: /etc/selinux/config
+    regexp: '^SELINUX=enforcing$'
+    line: 'SELINUX=permissive'
