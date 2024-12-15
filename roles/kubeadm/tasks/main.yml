@@ -69,7 +69,7 @@
     
 - name: Configure BGP ConfigMap
   kubernetes.core.k8s:
-    kubeconfig: "~{{ansible_user}}/.kube/config"
+    kubeconfig: "/root/.kube/config"
     state: present
     definition:
       apiVersion: v1
