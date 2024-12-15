@@ -50,7 +50,7 @@
     chmod 700 get_helm.sh
     ./get_helm.sh
     export PATH=$PATH:/usr/local/bin
-    ln -s /usr/local/sbin/helm /usr/local/bin/helm
+    ln -s /usr/local/bin/helm /usr/local/sbin/helm
   ignore_errors: yes 
 
 - name: Add Cilium Helm repo
