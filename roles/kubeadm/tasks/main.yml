@@ -34,7 +34,7 @@
   command: sysctl --system
 
 - name: Initialize Kubernetes cluster
-  command: kubeadm init --pod-network-cidr=10.244.0.0/16 --service-cidr=10.96.0.0/12 --control-plane-endpoint {{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}:6443 --cri-socket=unix:///var/run/crio/crio.sock
+  command: kubeadm init --control-plane-endpoint {{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}:6443 --cri-socket=unix:///var/run/crio/crio.sock
 
 
 - name: Configure kubectl for the root user
@@ -44,21 +44,23 @@
         chown $(id -u):$(id -g) $HOME/.kube/config
 
 
-- name: Install Calico networking
-  command: kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.0/manifests/tigera-operator.yaml
-  register: calico_install_result
-  until: calico_install_result.rc == 0  # Asegúrate de que la instalación haya tenido éxito (código de retorno 0)
-  retries: 5  # Número de intentos
-  delay: 10  # Retraso entre intentos (en segundos)
-  ignore_errors: yes
+- name: Install Helm
+  shell: |
+    curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+    chmod 700 get_helm.sh
+    ./get_helm.sh
 
-- name: Check Calico pods status
-  command: kubectl get pods -n kube-system
-  register: calico_pods
-  until: calico_pods.stdout_lines | length > 0
-  retries: 5
-  delay: 10
-
+- name: Install Cilium CLI
+  shell: |
+    CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
+    GOOS=$(go env GOOS)
+    GOARCH=$(go env GOARCH)
+    curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
+    sha256sum --check cilium-${GOOS}-${GOARCH}.tar.gz.sha256sum
+    sudo tar -C /usr/local/bin -xzvf cilium-${GOOS}-${GOARCH}.tar.gz
+    rm cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
+    cilium install
+    
 # Set kubectl completion and alias
 - name: Set kubectl completion in bash
   shell: echo "source <(kubectl completion bash)" >> ~/.bashrc
