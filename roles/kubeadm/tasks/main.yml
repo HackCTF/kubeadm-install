@@ -1,88 +1,180 @@
-- name: Disable swap
-  command: swapoff -a
+- name: Kubernetes Cluster Setup with Helm and Cilium
+  hosts: all
+  become: true
+  vars:
+    kubeadmin_config: /etc/kubernetes/admin.conf
+    first_master_node_ip_address: "{{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}"
+    cilium_helm_values:
+      externalIPs:
+        enabled: true
+      hostPort:
+        enabled: true
+      kubeProxyReplacement: true
+      k8sServiceHost: "{{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}"
+      k8sServicePort: 6443
+      loadBalancer:
+        algorithm: maglev
+      nodeinit:
+        enabled: true
+      nodePort:
+        enabled: true
+      operator:
+        replicas: 1
+      bgp:
+        enabled: true
+        announce:
+          loadbalancerIP: true
+      hubble:
+        enabled: true
+        metrics:
+          enabled:
+            - dns
+            - drop
+            - tcp
+            - flow
+            - port-distribution
+            - icmp
+            - http
+        listenAddress: ":4244"
+        relay:
+          enabled: true
+        ui:
+          enabled: true
 
-- name: Load kernel modules
-  shell: |
-    modprobe ip_tables iptable_nat
-    modprobe kvm
-    chmod 666 /dev/kvm
-    usermod -aG kvm $USER
-    modprobe overlay
-    modprobe br_netfilter
-    sysctl -w net.ipv4.ip_forward=1
-
-- name: Configure modules
-  copy:
-    dest: /etc/modules-load.d/kubernetes.conf
-    content: |
-      br_netfilter
-      ip_vs
-      ip_vs_rr
-      ip_vs_wrr
-      ip_vs_sh
-      overlay
-
-- name: Configure sysctl
-  copy:
-    dest: /etc/sysctl.d/kubernetes.conf
-    content: |
-      net.ipv4.ip_forward = 1
-      net.bridge.bridge-nf-call-ip6tables = 1
-      net.bridge.bridge-nf-call-iptables = 1
-
-- name: Apply sysctl settings
-  command: sysctl --system
-
-- name: Initialize Kubernetes cluster
-  command: kubeadm init --control-plane-endpoint {{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}:6443 --cri-socket=unix:///var/run/crio/crio.sock
-
-
-- name: Configure kubectl for the root user
-  shell: |
-        mkdir -p $HOME/.kube
-        cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-        chown $(id -u):$(id -g) $HOME/.kube/config
-
-
-- name: Install Helm
-  shell: |
-    curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
-    chmod 700 get_helm.sh
-    ./get_helm.sh
-
-- name: Install Cilium CLI
-  shell: |
-    CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
-    GOOS=$(go env GOOS)
-    GOARCH=$(go env GOARCH)
-    curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
-    sha256sum --check cilium-${GOOS}-${GOARCH}.tar.gz.sha256sum
-    sudo tar -C /usr/local/bin -xzvf cilium-${GOOS}-${GOARCH}.tar.gz
-    rm cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
-    cilium install
+  tasks:
+    - name: Disable swap
+      command: swapoff -a
     
-# Set kubectl completion and alias
-- name: Set kubectl completion in bash
-  shell: echo "source <(kubectl completion bash)" >> ~/.bashrc
-
-- name: Set kubectl alias in bash
-  shell: echo "alias k=kubectl" >> ~/.bashrc
-
-- name: Set kubectl auto-completion
-  shell: echo "complete -o default -F __start_kubectl k" >> ~/.bashrc
-
-
-- name: Source bashrc for kubectl completion
-  shell: source ~/.bashrc
-
-# Disable swap on Kubelet
-- name: Set failSwapOn to false in kubelet config
-  lineinfile:
-    path: /var/lib/kubelet/config.yaml
-    line: 'failSwapOn: false'
-    create: yes
-    state: present
-
-# Verify nodes in Kubernetes
-- name: Get Kubernetes nodes
-  command: kubectl get nodes
+    - name: Load kernel modules
+      shell: |
+        modprobe ip_tables iptable_nat
+        modprobe kvm
+        chmod 666 /dev/kvm
+        usermod -aG kvm $USER
+        modprobe overlay
+        modprobe br_netfilter
+        sysctl -w net.ipv4.ip_forward=1
+    
+    - name: Configure modules
+      copy:
+        dest: /etc/modules-load.d/kubernetes.conf
+        content: |
+          br_netfilter
+          ip_vs
+          ip_vs_rr
+          ip_vs_wrr
+          ip_vs_sh
+          overlay
+    
+    - name: Configure sysctl
+      copy:
+        dest: /etc/sysctl.d/kubernetes.conf
+        content: |
+          net.ipv4.ip_forward = 1
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.bridge.bridge-nf-call-iptables = 1
+    
+    - name: Apply sysctl settings
+      command: sysctl --system
+    
+    - name: Initialize Kubernetes cluster
+      command: kubeadm init --pod-network-cidr=10.217.0.0/16 --service-cidr=10.96.0.0/12 --control-plane-endpoint --skip-phases "addon/kube-proxy" {{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}:6443 --cri-socket=unix:///var/run/crio/crio.sock
+    
+    
+    - name: Configure kubectl for the root user
+      shell: |
+            mkdir -p $HOME/.kube
+            cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+            chown $(id -u):$(id -g) $HOME/.kube/config
+    
+    
+    - name: Install Helm
+      shell: |
+        curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+        chmod 700 get_helm.sh
+        ./get_helm.sh
+    
+    - name: Add Cilium Helm repo
+      kubernetes.core.helm_repository:
+        name: cilium
+        repo_url: https://helm.cilium.io
+      tags:
+        - cilium
+        - network
+        - master
+    
+    - name: Install Cilium
+      kubernetes.core.helm:
+        name: cilium
+        chart_ref: cilium/cilium
+        chart_version: "1.16.4"
+        release_namespace: kube-system
+        release_values: "{{ cilium_helm_values }}"
+      tags:
+        - cilium
+        - network
+        - master
+    
+    - name: Configure BPG ConfigMap
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: bgp-config
+            namespace: kube-system
+          data:
+            config.yaml: |
+              peers:
+                - peer-address: 192.168.1.1
+                  peer-asn: 64512
+                  my-asn: 64512
+              address-pools:
+                - name: default
+                  protocol: bgp
+                  addresses:
+                    - 172.16.10.0/24
+      tags:
+        - cilium
+        - network
+        - master
+    
+    - name: Install Cilium CLI
+      shell: |
+        CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
+        GOOS=$(go env GOOS)
+        GOARCH=$(go env GOARCH)
+        curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
+        sha256sum --check cilium-${GOOS}-${GOARCH}.tar.gz.sha256sum
+        sudo tar -C /usr/local/bin -xzvf cilium-${GOOS}-${GOARCH}.tar.gz
+        rm cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
+    
+    
+    
+        
+    # Set kubectl completion and alias
+    - name: Set kubectl completion in bash
+      shell: echo "source <(kubectl completion bash)" >> ~/.bashrc
+    
+    - name: Set kubectl alias in bash
+      shell: echo "alias k=kubectl" >> ~/.bashrc
+    
+    - name: Set kubectl auto-completion
+      shell: echo "complete -o default -F __start_kubectl k" >> ~/.bashrc
+    
+    
+    - name: Source bashrc for kubectl completion
+      shell: source ~/.bashrc
+    
+    # Disable swap on Kubelet
+    - name: Set failSwapOn to false in kubelet config
+      lineinfile:
+        path: /var/lib/kubelet/config.yaml
+        line: 'failSwapOn: false'
+        create: yes
+        state: present
+    
+    # Verify nodes in Kubernetes
+    - name: Get Kubernetes nodes
+      command: kubectl get nodes
