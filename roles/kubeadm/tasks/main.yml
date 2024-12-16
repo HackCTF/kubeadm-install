@@ -34,7 +34,8 @@
   command: sysctl --system
     
 - name: Initialize Kubernetes cluster
-  command: kubeadm init --pod-network-cidr=20.217.0.0/16 --service-cidr=20.96.0.0/16 --skip-phases=addon/kube-proxy --cri-socket=unix:///var/run/crio/crio.sock --apiserver-advertise-address={{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}
+  #command: kubeadm init --pod-network-cidr=20.217.0.0/16 --service-cidr=20.96.0.0/16 --skip-phases=addon/kube-proxy --cri-socket=unix:///var/run/crio/crio.sock --apiserver-advertise-address={{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}
+  command: kubeadm init --apiserver-advertise-address={{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}  --apiserver-cert-extra-sans={{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}  --pod-network-cidr=172.16.0.0/16 --node-name node1 --ignore-preflight-errors Swap --skip-phases=addon/kube-proxy --service-cluster-ip=10.96.0.0/28
   ignore_errors: yes 
     
     
@@ -58,38 +59,38 @@
     name: cilium
     repo_url: https://helm.cilium.io
     
-- name: Install Cilium
-  kubernetes.core.helm:
-    name: cilium
-    chart_ref: cilium/cilium
-    chart_version: "1.16.4"
-    release_namespace: kube-system
-    release_values: "{{ cilium_helm_values }}"
+#- name: Install Cilium
+#  kubernetes.core.helm:
+#    name: cilium
+#    chart_ref: cilium/cilium
+#    chart_version: "1.16.4"
+#    release_namespace: kube-system
+#    release_values: "{{ cilium_helm_values }}"
 
     
-- name: Configure BGP ConfigMap
-  copy:
-    dest: "/tmp/bgp-configmap.yaml"
-    content: |
-      apiVersion: v1
-      kind: ConfigMap
-      metadata:
-        name: bgp-config
-        namespace: kube-system
-      data:
-        config.yaml: |
-          peers:
-            - peer-address: 192.168.1.1
-              peer-asn: 64512
-              my-asn: 64512
-          address-pools:
-            - name: default
-              protocol: bgp
-              addresses:
-                - 172.16.10.0/24
+#- name: Configure BGP ConfigMap
+#  copy:
+#    dest: "/tmp/bgp-configmap.yaml"
+#    content: |
+#      apiVersion: v1
+#      kind: ConfigMap
+#      metadata:
+#        name: bgp-config
+#        namespace: kube-system
+#      data:
+#        config.yaml: |
+#          peers:
+#            - peer-address: 192.168.1.1
+#              peer-asn: 64512
+#              my-asn: 64512
+#          address-pools:
+#            - name: default
+#              protocol: bgp
+#              addresses:
+#                - 172.16.10.0/24
 
-- name: Apply BGP ConfigMap
-  command: kubectl apply -f /tmp/bgp-configmap.yaml --kubeconfig=/root/.kube/config
+#- name: Apply BGP ConfigMap
+#  command: kubectl apply -f /tmp/bgp-configmap.yaml --kubeconfig=/root/.kube/config
 
     
 - name: Install Cilium CLI
