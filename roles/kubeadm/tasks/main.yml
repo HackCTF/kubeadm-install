@@ -54,10 +54,10 @@
     ln -s /usr/local/bin/helm /usr/local/sbin/helm
   ignore_errors: yes 
 
-- name: Add Cilium Helm repo
-  kubernetes.core.helm_repository:
-    name: cilium
-    repo_url: https://helm.cilium.io
+#- name: Add Cilium Helm repo
+#  kubernetes.core.helm_repository:
+#    name: cilium
+#    repo_url: https://helm.cilium.io
     
 #- name: Install Cilium
 #  kubernetes.core.helm:
