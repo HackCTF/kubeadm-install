@@ -19,7 +19,7 @@
         name: firewall
     - include_role:
         name: repos
-    #- include_role:
-    #    name: install_packages
+    - include_role:
+        name: install_packages
     #- include_role:
     #    name: kubeadm
