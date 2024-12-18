@@ -34,7 +34,7 @@
   command: sysctl --system
     
 #- name: Initialize Kubernetes cluster
-  #command: kubeadm init --apiserver-advertise-address={{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}  --apiserver-cert-extra-sans={{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }}  --pod-network-cidr=172.16.0.0/16 --node-name node1 --ignore-preflight-errors Swap --skip-phases=addon/kube-proxy --service-cluster-ip=10.96.0.0/28
+  #command: kubeadm init --control-plane-endpoint={{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address) }} --pod-network-cidr=10.244.0.0/16 --cri-socket=/var/run/crio/crio.sock
   #ignore_errors: yes 
     
     
